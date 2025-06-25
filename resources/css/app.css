@@ -1,0 +1,237 @@
+@import 'tailwindcss';
+
+@plugin 'tailwindcss-animate';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-sans:
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-sidebar: var(--sidebar-background);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+}
+
+:root {
+    --background: hsl(0, 0%, 100%);
+    --foreground: hsl(208, 94%, 20%);
+    --card: hsl(0, 0%, 100%);
+    --card-foreground: hsl(208, 94%, 20%);
+    --popover: hsl(0, 0%, 100%);
+    --popover-foreground: hsl(208, 94%, 20%);
+    --primary: hsl(208, 94%, 20%);
+    --primary-foreground: hsl(0, 0%, 98%);
+    --secondary: hsl(0, 0%, 96.1%);
+    --secondary-foreground: hsl(0, 0%, 9%);
+    --muted: hsl(0, 0%, 96.1%);
+    --muted-foreground: hsl(0, 0%, 45.1%);
+    --accent: hsl(0, 0%, 96.1%);
+    --accent-foreground: hsl(208, 94%, 20%);
+    --destructive: hsl(0, 84.2%, 60.2%);
+    --destructive-foreground: hsl(0, 0%, 98%);
+    --border: hsl(0, 0%, 92.8%);
+    --input: hsl(0, 0%, 89.8%);
+    --ring: hsl(0, 0%, 3.9%);
+    --chart-1: hsl(12, 76%, 61%);
+    --chart-2: hsl(173, 58%, 39%);
+    --chart-3: hsl(197, 37%, 24%);
+    --chart-4: hsl(43, 74%, 66%);
+    --chart-5: hsl(27, 87%, 67%);
+    --radius: 0.5rem;
+    --sidebar-background: hsl(0, 0%, 98%);
+    --sidebar-foreground: hsl(240, 5.3%, 30%);
+    --sidebar-primary: hsl(208, 94%, 20%);
+    --sidebar-primary-foreground: hsl(0, 0%, 98%);
+    --sidebar-accent: hsl(0, 0%, 94%);
+    --sidebar-accent-foreground: hsl(0, 0%, 30%);
+    --sidebar-border: hsl(0, 0%, 91%);
+    --sidebar-ring: hsl(217.2, 91.2%, 59.8%);
+}
+
+/* --------------------------------------------------------------
+   DARK-MODE PALETTE  – Vertical Alternatives
+   -------------------------------------------------------------- */
+   .dark {
+    /* --------  Base surfaces  -------- */
+    --background:               hsl(208 97% 15%);   /* page */
+    --foreground:               hsl(0   0%  98%);   /* default text */
+  
+    --card:                     hsl(208 94% 20%);
+    --card-foreground:          var(--foreground);
+  
+    --popover:                  hsl(208 94% 18%);
+    --popover-foreground:       var(--foreground);
+  
+    /* --------  Functional colours  -------- */
+    --primary:                  hsl(208 94% 25%);   /* brand blue for fills */
+    --primary-foreground:       hsl(0   0%  98%);
+  
+    --secondary:                hsl(210 15% 20%);
+    --secondary-foreground:     var(--foreground);
+  
+    --muted:                    hsl(210 10% 18%);
+    --muted-foreground:         hsl(210 10% 65%);
+  
+    --accent:                   hsl(208 94% 25%);   /* matches sidebar */
+    --accent-foreground:        var(--foreground);
+  
+    --destructive:              hsl(0   84% 60%);
+    --destructive-foreground:   var(--foreground);
+  
+    /* --------  Borders / inputs / focus  -------- */
+    --border:                   hsl(208 22% 28%);   /* ↑ lighter so 1 px shows */
+    --input:                    var(--border);      /* same shade for inputs */
+    --ring:                     hsl(208 90% 55%);   /* focus outline */
+  
+    /* --------  Charts  -------- */
+    --chart-1:                  hsl(220 70% 50%);
+    --chart-2:                  hsl(160 60% 45%);
+    --chart-3:                  hsl( 30 80% 55%);
+    --chart-4:                  hsl(280 65% 60%);
+    --chart-5:                  hsl(340 75% 55%);
+  
+    /* --------  Sidebar palette  -------- */
+    --sidebar-background:       var(--card);        /* keep seamless */
+    --sidebar-foreground:       hsl(0   0%  85%);
+    --sidebar-primary:          hsl(0   0%  98%);
+    --sidebar-primary-foreground: var(--sidebar-background);
+    --sidebar-accent:           hsl(208 94% 25%);
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border:           hsl(208 22% 28%);
+    --sidebar-ring:             var(--ring);
+  }
+
+  /* -----------------------------------------------------------------
+   Dark‑theme readability patch
+   ----------------------------------------------------------------- */
+@layer utilities {
+  /* text that was relying on gray‑6/7/800 in light mode */
+  .dark .text-gray-600,
+  .dark .text-gray-700,
+  .dark .text-gray-800 {
+    /* slate‑200 = #e2e8f0 – works on your #003255 backgrounds */
+    color: hsl(210 40% 88%) !important;
+  }
+
+  /* very light gray backgrounds that turn blinding‑white in dark */
+  .dark .bg-gray-50,
+  .dark .bg-gray-100 {
+    background-color: hsl(210 15% 20%) !important;   /* matches --secondary */
+  }
+
+  /* hover effect that was invisible */
+  .dark .hover\\:bg-gray-100:hover {
+    background-color: hsl(210 10% 25%) !important;
+  }
+
+  .dark select option {
+  /* foreground‑on‑white that’s readable on both the OS popup
+     and on the custom white listbox you’re seeing */
+  color: hsl(210 40% 88%) !important;   /* slate‑200 */
+}
+
+/*  💡  More contrast for <select> pop‑ups in dark mode  */
+.dark select               {               /* closed control  */
+  background-color:hsl(208 94% 18%);        /* match our card */
+  color:            hsl(210 40% 90%);       /* slate‑100 text */
+}
+
+.dark select option        {               /* rows in list   */
+  background-color:hsl(208 94% 18%);        /* same dark blue */
+  color:            hsl(210 40% 95%);       /* almost‑white   */
+}
+
+/* optional: keep the “Text/Image/Video” that is *disabled* greyed‑out
+.dark select option:disabled {
+  color:hsl(210 10% 60%);
+} */
+
+}
+
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+/*
+  ---break---
+*/
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+}
