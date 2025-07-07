@@ -12,7 +12,7 @@ import {
 import { NavMain } from '@/components/nav-main';
 import { NavFooter } from '@/components/nav-footer';
 import { NavUser } from '@/components/nav-user';
-import { BellIcon, BriefcaseBusinessIcon, ChartSplineIcon, FolderIcon, FolderLockIcon, HomeIcon, LayoutGrid, UserPlusIcon, UsersIcon, ShieldIcon, MegaphoneIcon } from 'lucide-react';
+import { BellIcon, BriefcaseBusinessIcon, ChartSplineIcon, FolderIcon, FolderLockIcon, HomeIcon, LayoutGrid, UserPlusIcon, UsersIcon, ShieldIcon, MegaphoneIcon, Calendar } from 'lucide-react';
 import AppLogo from '../app-logo';
 import type { NavItem, SharedData } from '@/types';
 
@@ -29,6 +29,7 @@ export function AppSidebar() {
     { title: 'Sales', url: '/admin/sales', icon: BriefcaseBusinessIcon },
     { title: 'Clients', url: '/admin/clients', icon: UsersIcon },
     { title: 'Agents', url: '/admin/agents', icon: UsersIcon },
+    { title: 'Calendar', url: '/admin/calendar', icon: Calendar },
     { title: 'Forms & Resources', url: '/admin/forms-resources', icon: FolderIcon },
     { title: 'Broadcasts', url: route('admin.broadcasts.index')   // →  /admin/broadcasts   (GET)
       , icon: MegaphoneIcon },

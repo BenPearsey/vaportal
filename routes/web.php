@@ -33,6 +33,8 @@ use App\Http\Controllers\AdminCustomBroadcastController;
 use App\Http\Controllers\AdminAdminDocumentController;
 use App\Http\Controllers\SaleDocumentController;
 use App\Http\Controllers\SaleNoteController;
+use App\Http\Controllers\AdminEventController;
+
 
 
 // Main Route - Redirect Based on Role
@@ -83,6 +85,8 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('home');
     })->name('test.notif');
 });
+
+
 
 // ✅ Admin Routes
 Route::middleware(['auth', 'role:admin'])->group(function () {
@@ -139,7 +143,19 @@ Route::delete('admin/sales/{sale}/documents/{document}',[SaleDocumentController:
 Route::post ('admin/sales/{sale}/notes',             [SaleNoteController::class,'store'   ])->name('admin.sales.notes.store');
 Route::delete('admin/sales/{sale}/notes/{note}',     [SaleNoteController::class,'destroy'])->name('admin.sales.notes.destroy');
 
-   
+     // Admin Calendar Page
+    Route::get('admin/calendar', fn () => Inertia::render('admin/calendar'))->name('admin.calendar');
+
+
+    Route::middleware(['auth', 'adminOrCalendarAgent'])
+    ->prefix('admin/events')
+    ->controller(AdminEventController::class)
+    ->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+        Route::put('/{id}', 'update');
+        Route::delete('/{id}', 'destroy');
+    });
 
     // Agents
     Route::get('admin/agents/create', [AdminAgentController::class, 'create'])->name('admin.agents.create');
