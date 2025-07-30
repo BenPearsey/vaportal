@@ -84,4 +84,20 @@ class Agent extends Model
     {
         return $this->hasMany(AgentDocumentFolder::class, 'agent_id', 'agent_id');
     }
+
+    public function contactPayload(): array
+{
+    return [
+        'firstname' => $this->firstname,
+        'lastname'  => $this->lastname,
+        'email'     => $this->email,
+        'phone'     => $this->phone,
+        'company'   => $this->company,
+    ];
+}
+public function contactKey(): array
+{
+    return ['agent_id' => $this->agent_id];
+}
+
 }

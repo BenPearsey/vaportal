@@ -28,4 +28,26 @@ class Admin extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function contact()
+{
+    return $this->hasOne(Contact::class, 'admin_id', 'admin_id');
+}
+
+/* --- Contact integration --- */
+public function contactPayload(): array
+{
+    return [
+        'firstname' => $this->firstname,
+        'lastname'  => $this->lastname,
+        'email'     => $this->email,
+        'phone'     => $this->phone,
+        'company'   => $this->company,
+    ];
+}
+public function contactKey(): array
+{
+    return ['admin_id' => $this->admin_id];
+}
+
 }

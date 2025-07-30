@@ -235,3 +235,7 @@
     @apply bg-background text-foreground;
     }
 }
+
+/* make strike-through cascade to nested spans inside FC events */
+.line-through *,
+.line-through { text-decoration: line-through !important; }

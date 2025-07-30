@@ -27,5 +27,14 @@ class AppServiceProvider extends ServiceProvider
 
         // Register custom middleware
         Route::aliasMiddleware('role', RoleMiddleware::class);
+
+                Route::macro('sortable', function () {
+            /** @var \Illuminate\Routing\Route $this */
+            $this->whereAlpha('column');
+            return $this;
+        });
+
+            \App\Models\Event::observe(\App\Observers\EventObserver::class);
+
     }
 }

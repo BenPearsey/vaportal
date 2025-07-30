@@ -70,4 +70,19 @@ class Client extends Model
     }
 
 
+    /* --- Contact integration --- */public function contactPayload(): array
+{
+    return [
+        'firstname' => $this->firstname,
+        'lastname'  => $this->lastname,
+        'email'     => $this->email,
+        'phone'     => $this->phone,
+    ];
+}
+public function contactKey(): array
+{
+    return ['client_id' => $this->client_id];
+}
+
+
 }

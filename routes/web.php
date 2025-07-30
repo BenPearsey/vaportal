@@ -34,7 +34,8 @@ use App\Http\Controllers\AdminAdminDocumentController;
 use App\Http\Controllers\SaleDocumentController;
 use App\Http\Controllers\SaleNoteController;
 use App\Http\Controllers\AdminEventController;
-
+use App\Http\Controllers\AdminContactController;
+use App\Http\Controllers\ContactLinkController;
 
 
 // Main Route - Redirect Based on Role
@@ -156,6 +157,61 @@ Route::delete('admin/sales/{sale}/notes/{note}',     [SaleNoteController::class,
         Route::put('/{id}', 'update');
         Route::delete('/{id}', 'destroy');
     });
+
+/* ───────── Admin • Contacts ───────── */
+
+Route::middleware(['auth', 'role:admin'])
+     ->prefix('admin')
+     ->as('admin.contacts.')
+     ->controller(AdminContactController::class)
+     ->group(function () {
+
+    /* LIST */
+    Route::get('/contacts', 'index')->name('index');
+
+    /* CREATE */
+    Route::get ('/contacts-create', 'create')->name('create');
+    Route::post('/contacts',         'store') ->name('store');
+
+    /* SHOW  ─ both paths map to the same method */
+    Route::get('/contacts-show/{contact}', 'show')->name('show');
+    Route::get('/contacts/{contact}',      'show');        // ← alias
+
+    /* EDIT / DELETE */
+    Route::put   ('/contacts/{contact}', 'update')->name('update');
+    Route::delete('/contacts/{contact}', 'destroy')->name('destroy');
+
+    /* CONVERSIONS */
+    Route::post('/contacts/{contact}/convert-to-agent',  'convertToAgent')
+        ->name('convertToAgent');
+    Route::post('/contacts/{contact}/convert-to-client', 'convertToClient')
+        ->name('convertToClient');
+
+        // routes/web.php  (inside the admin/contacts group)
+Route::get('/contacts-edit/{contact}', 'edit')   // ← real edit, when you build it
+      ->name('edit');
+
+// TEMP: while “edit” page isn’t built, forward to show so the UI doesn’t explode
+Route::get('/contacts/{contact}/edit', 'show')   // ← keep old URL working too
+      ->name('edit');                            // gives Ziggy its route name
+
+
+      // Quick-note create
+Route::post('/{contact}/history',  [AdminContactController::class,'storeHistory'])
+     ->name('history.store');
+
+     Route::get('/contacts/{contact}/edit', 'edit')->name('edit');
+
+     Route::post('/contacts/{contact}/links',  [ContactLinkController::class,'store'])
+     ->name('links.store');
+Route::delete('/contacts/{contact}/links/{link}', [ContactLinkController::class,'destroy'])
+     ->name('links.destroy');
+
+
+});
+
+
+
 
     // Agents
     Route::get('admin/agents/create', [AdminAgentController::class, 'create'])->name('admin.agents.create');
