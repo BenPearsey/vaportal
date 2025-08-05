@@ -20,7 +20,7 @@ class UpdateEventRequest extends FormRequest
         'end_datetime' => 'sometimes|required|date|after_or_equal:start_datetime',
         'all_day'      => 'sometimes|boolean',
 
-        'activity_type'=> 'sometimes|string|in:Meeting,Call,Task,Other',
+        'activity_type'=> 'sometimes|string|in:Meeting,Call,Task,Video Call',
         'status'       => 'sometimes|nullable|string|in:scheduled,completed,canceled',
 
         // accept null

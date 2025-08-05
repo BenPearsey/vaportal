@@ -21,7 +21,7 @@ public function rules(): array
         'end_datetime' => 'required|date|after_or_equal:start_datetime',
         'all_day'      => 'boolean',
 
-        'activity_type'=> 'required|string|in:Meeting,Call,Task,Other',
+        'activity_type'=> 'required|string|in:Meeting,Call,Task,Video Call', 
         'status'       => 'nullable|string|in:scheduled,completed,canceled',
         'recurrence_rule'       => 'nullable|string',        
         'recurrence_exceptions' => 'nullable|array',         

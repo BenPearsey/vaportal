@@ -30,6 +30,7 @@ class HandleInertiaRequests extends Middleware
         // 3) auth user + admin relationship
         $shared['auth'] = [
             'user'  => $request->user(),
+            'roles' => $request->user()?->roles->pluck('role_type') ?? [],
             'admin' => $request->user() && $request->user()->role === 'admin'
                 ? $request->user()->admin
                 : null,

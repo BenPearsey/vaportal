@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -20,13 +21,17 @@ interface Props {
 }
 
 export function AppSidebarHeader({ breadcrumbs = [] }: Props) {
+  /* ───────── shared props ───────── */
+  const { notifications, unreadCount, auth } = usePage<SharedData>().props;
+  const roles: string[] = auth.roles ?? [];
+
   const { user, firstName, lastName } = useAuth();
   const cleanup = useMobileNavigation();
-  const { notifications, unreadCount } = usePage<SharedData>().props;
 
   return (
     <header className="border-sidebar-border/50 flex h-16 shrink-0 items-center gap-2 border-b px-6 md:px-4">
-      <div className="flex items-center gap-2 flex-1">
+      {/* left: burger + crumbs */}
+      <div className="flex flex-1 items-center gap-2">
         <SidebarTrigger className="-ml-1" />
         <Breadcrumbs breadcrumbs={breadcrumbs} />
       </div>
@@ -43,6 +48,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: Props) {
             )}
           </button>
         </DropdownMenuTrigger>
+
         <DropdownMenuContent align="end" className="w-80">
           <DropdownMenuItem className="flex justify-between px-4 py-2">
             <span className="font-semibold">Notifications</span>
@@ -54,7 +60,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: Props) {
             </button>
           </DropdownMenuItem>
 
-          {notifications.length > 0 ? (
+          {notifications.length ? (
             notifications.map(n => (
               <DropdownMenuItem
                 key={n.id}
@@ -83,7 +89,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: Props) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* 👤 Profile */}
+      {/* 👤 Avatar + optional role switcher */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Avatar className="cursor-pointer">
@@ -94,7 +100,31 @@ export function AppSidebarHeader({ breadcrumbs = [] }: Props) {
             </AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
+
         <DropdownMenuContent align="end">
+          {roles.length > 1 && (
+            <>
+              <DropdownMenuItem disabled className="opacity-70">
+                Switch role
+              </DropdownMenuItem>
+              {roles.map(role => (
+                <DropdownMenuItem
+                  key={role}
+                  onClick={() =>
+                    router.post(
+                      route('role.switch'),
+                      { role: role.toLowerCase().trim() },
+                      { withCredentials: true, onFinish: () => (window.location.href = '/') },
+                    )
+                  }
+                >
+                  {role.charAt(0).toUpperCase() + role.slice(1)}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+            </>
+          )}
+
           <DropdownMenuItem asChild>
             <Link href="/agent/settings/profile">Profile</Link>
           </DropdownMenuItem>

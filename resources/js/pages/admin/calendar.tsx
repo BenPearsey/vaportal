@@ -54,7 +54,7 @@ import { toast } from "sonner";
 
 /* ────────────────────────────────────────────────────────── */
 /* helpers */
-const typeIcon: Record<string,string> = { Meeting:"📅", Call:"📞", Task:"✅", Other:"📌" };
+const typeIcon: Record<string,string> = { Meeting:"📅", Call:"📞", Task:"✅", "Video Call":"📌" };
 const priorityColor: Record<string,string> = { high:"#dc2626", medium:"#f59e0b", low:"#16a34a" };
 const ownerColor = (id:number) => `hsl(${(id*47)%360} 70% 45%)`;
 
@@ -98,7 +98,7 @@ interface CalendarEvent{
   description?:string|null;
   start?:string; end?:string; all_day?:boolean;
   recurrence_rule?:string|null;
-  activity_type?:"Meeting"|"Call"|"Task"|"Other";
+  activity_type?:"Meeting"|"Call"|"Task"|"Video Call";
   status?:"scheduled"|"completed"|"canceled";
   priority?:"low"|"medium"|"high";
   location?:string|null;
@@ -386,7 +386,7 @@ function EventForm({formData,onChange,showRecurrence,setShowRecurrence}:FormProp
         <Label>Activity Type</Label>
         <Select value={formData.activity_type||"Meeting"} onValueChange={v=>onChange("activity_type",v as any)}>
           <SelectTrigger className="w-full"><SelectValue placeholder="Select type"/></SelectTrigger>
-          <SelectContent>{["Meeting","Call","Task","Other"].map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+          <SelectContent>{["Meeting","Call","Task","Video Call"].map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
         </Select>
         <Label>Priority</Label>
         <Select value={formData.priority||"medium"} onValueChange={v=>onChange("priority",v as any)}>

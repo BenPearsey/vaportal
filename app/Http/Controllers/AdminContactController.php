@@ -32,7 +32,7 @@ public function index(Request $request)
         $sortCol = 'lastname';   // fallback
     }
 
-    $contacts = Contact::with(['agent', 'client'])
+    $contacts = Contact::with(['admin', 'agent', 'client'])
         ->orderBy($allowed[$sortCol], $sortDir)
         ->paginate(25)
         ->appends($request->only('sort','dir'));  // keep params when paging

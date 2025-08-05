@@ -12,8 +12,24 @@ class Contact extends Model
     protected $fillable = [
         'prefix', 'firstname', 'middle', 'lastname',
         'email', 'phone', 'company', 'notes',
-        'created_by', 'agent_id', 'client_id',
+        'created_by', 'agent_id', 'client_id', 'admin_id',
     ];
+
+        protected $appends = ['roles'];
+
+         public function getRolesAttribute(): array
+    {
+        $roles = [];
+        if ($this->admin_id)  $roles[] = 'Admin';
+        if ($this->agent_id)  $roles[] = 'Agent';
+        if ($this->client_id) $roles[] = 'Client';
+
+        if (! $roles) {
+            $roles[] = $this->user_id ? 'User' : 'Standalone';
+        }
+        return $roles;                       // e.g. ['Admin','Agent']
+    }
+
 
     /* ───── Relationships ───── */
 

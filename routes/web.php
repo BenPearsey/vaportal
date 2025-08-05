@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Http\Request;
+
 
 use App\Models\Sale;
 use App\Notifications\SaleStatusUpdated;
@@ -41,23 +43,27 @@ use App\Http\Controllers\ContactLinkController;
 // Main Route - Redirect Based on Role
 Route::get('/', function () {
     if (Auth::check()) {
-        $user = Auth::user();
-        if ($user->role === 'admin') {
-            return redirect()->route('admin.dashboard');
-        } elseif ($user->role === 'agent') {
-            return redirect()->route('agent.dashboard');
-        } elseif ($user->role === 'client') {
-            return redirect()->route('client.dashboard');
-        }
-        return Inertia::render('auth/no-dashboard', [
-            'message' => 'Your account does not have an assigned role. Please contact support.'
-        ]);
+        $user   = Auth::user();
+        // ① normalize: lowercase + trim
+        $active = strtolower(trim(session('active_role') ?? $user->role));
+
+        return match ($active) {
+            'admin'  => redirect()->route('admin.dashboard'),
+            'agent'  => redirect()->route('agent.dashboard'),
+            'client' => redirect()->route('client.dashboard'),
+            default  => Inertia::render('auth/no-dashboard', [
+                'message' => 'Your account does not have an assigned role. Please contact support.',
+            ]),
+        };
     }
+
     return Inertia::render('auth/login', [
-        'status' => 'Please log in to access your account',
+        'status'           => 'Please log in to access your account',
         'canResetPassword' => Route::has('password.request'),
     ]);
 })->name('home');
+
+
 
 // Shared notification routes & test endpoint
 Route::middleware('auth')->group(function () {
@@ -86,6 +92,25 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('home');
     })->name('test.notif');
 });
+
+/*
+|------------------------------------------------------------------
+| Switch active role (only for multi-role users)
+|------------------------------------------------------------------
+*/
+Route::post('/switch-role', function (Illuminate\Http\Request $request) {
+    $role = strtolower(trim($request->string('role')));   // normalize here too
+    $user = $request->user();
+
+    if (! $user->roles->pluck('role_type')->contains($role)) {
+        abort(403);
+    }
+
+    $request->session()->put('active_role', $role);
+
+    return response()->noContent();
+})->middleware('auth')->name('role.switch');
+
 
 
 

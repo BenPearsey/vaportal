@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetActiveRole;              // ① NEW ←
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         /* ---------- global WEB stack ---------- */
         $middleware->web(append: [
             HandleInertiaRequests::class,
+            SetActiveRole::class,                 // ② NEW ←
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
@@ -39,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // your existing alias
             'adminOrCalendarAgent' => \App\Http\Middleware\AdminOrCalendarAgent::class,
         ]);
+
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // …

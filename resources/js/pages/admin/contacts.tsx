@@ -1,61 +1,60 @@
 /* eslint-disable react/jsx-no-constructed-context-values */
-import { useState } from "react";
-import AppLayout from "@/layouts/app-layout-admin";
-import { Head, Link, router, usePage } from "@inertiajs/react";
-import dayjs from "dayjs";
+import { useState } from 'react';
+import AppLayout from '@/layouts/app-layout-admin';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import dayjs from 'dayjs';
 
 /* shadcn/ui */
 import {
   Card, CardContent, CardHeader, CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { Button }  from "@/components/ui/button";
-import { Input }   from "@/components/ui/input";
+} from '@/components/ui/table';
+import { Button }   from '@/components/ui/button';
+import { Input }    from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 
 /* icons */
 import {
   Filter, MoreHorizontal, ChevronUp, ChevronDown,
   ChevronLeft, ChevronRight, Trash2, Eye,
-} from "lucide-react";
-import { toast } from "sonner";
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 /* types */
-import type { BreadcrumbItem } from "@/types";
-import type { Contact }        from "@/types/contact";
+import type { BreadcrumbItem } from '@/types';
+import type { Contact }        from '@/types/contact';
 
-/* ── breadcrumbs ── */
+/* — breadcrumbs — */
 const breadcrumbs: BreadcrumbItem[] = [
-  { title: "Home",     href: "/admin/dashboard" },
-  { title: "Contacts", href: "/admin/contacts" },
+  { title: 'Home',     href: '/admin/dashboard' },
+  { title: 'Contacts', href: '/admin/contacts' },
 ];
 
-/* role-badge colours */
+/* badge colours */
 const badgeCls: Record<string, string> = {
-  Admin : "bg-amber-600 text-white",
-  Agent : "bg-sky-600 text-white",
-  Client: "bg-emerald-600 text-white",
-  User  : "bg-violet-600 text-white",
-  Standalone: "bg-gray-500 text-white",
+  Admin : 'bg-amber-600 text-white',
+  Agent : 'bg-sky-600 text-white',
+  Client: 'bg-emerald-600 text-white',
+  User  : 'bg-violet-600 text-white',
 };
 
 /* filters & sorting */
-type RoleFilter = "All" | "Standalone" | "Admin" | "Agent" | "Client" | "User";
+type RoleFilter = 'All' | 'Standalone' | 'Admin' | 'Agent' | 'Client' | 'User';
 
 const sortLabels = {
-  name   : "Name",
-  email  : "Email",
-  company: "Company",
-  phone  : "Phone",
-  created: "Created",
+  name   : 'Name',
+  email  : 'Email',
+  company: 'Company',
+  phone  : 'Phone',
+  created: 'Created',
 } as const;
 type SortKey = keyof typeof sortLabels;
 
@@ -64,31 +63,26 @@ export default function AdminContactsPage() {
   const { contacts: pageData, sortCol, sortDir } = usePage().props as any;
   const contacts: Contact[] = pageData.data ?? [];
 
-  const [query,   setQuery]   = useState("");
-  const [roleSel, setRoleSel] = useState<RoleFilter>("All");
+  const [query,   setQuery]   = useState('');
+  const [roleSel, setRoleSel] = useState<RoleFilter>('All');
   const [trashId, setTrashId] = useState<number | null>(null);
 
-  /* search + role filter (client-side) */
-  const list = contacts.filter(c => {
+  /* -------- client-side search / filter -------- */
+  const visible = contacts.filter(c => {
     const q = query.toLowerCase();
     const hit =
       `${c.firstname} ${c.lastname}`.toLowerCase().includes(q) ||
-      (c.email   ?? "").toLowerCase().includes(q) ||
-      (c.phone   ?? "").toLowerCase().includes(q) ||
-      (c.company ?? "").toLowerCase().includes(q);
+      (c.email   ?? '').toLowerCase().includes(q) ||
+      (c.phone   ?? '').toLowerCase().includes(q) ||
+      (c.company ?? '').toLowerCase().includes(q);
 
-    const role =
-      c.admin_id  ? "Admin"  :
-      c.agent_id  ? "Agent"  :
-      c.client_id ? "Client" :
-      c.user_id   ? "User"   : "Standalone";
-
-    return hit && (roleSel === "All" || roleSel === role);
+    const roles = c.roles as string[];
+    return hit && (roleSel === 'All' || roles.includes(roleSel));
   });
 
   /* helpers */
   const changeSort = (col: SortKey) => {
-    const dir = col === sortCol ? (sortDir === "asc" ? "desc" : "asc") : "asc";
+    const dir = col === sortCol ? (sortDir === 'asc' ? 'desc' : 'asc') : 'asc';
     router.visit(`/admin/contacts?sort=${col}&dir=${dir}`);
   };
   const goto = (p: number) =>
@@ -96,14 +90,14 @@ export default function AdminContactsPage() {
 
   const reallyDelete = () => {
     if (!trashId) return;
-    router.delete(route("admin.contacts.destroy", trashId), {}, {
-      onSuccess: () => { toast.success("Contact deleted"); router.reload({ only:["contacts"] }); },
-      onError  : () => toast.error("Delete failed"),
+    router.delete(route('admin.contacts.destroy', trashId), {}, {
+      onSuccess: () => { toast.success('Contact deleted'); router.reload({ only:['contacts'] }); },
+      onError  : () => toast.error('Delete failed'),
     });
     setTrashId(null);
   };
 
-  /* ── render ── */
+  /* -------- render -------- */
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Contacts" />
@@ -126,7 +120,7 @@ export default function AdminContactsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {["All","Standalone","Admin","Agent","Client","User"].map(r => (
+                {['All','Standalone','Admin','Agent','Client','User'].map(r => (
                   <DropdownMenuItem key={r} onClick={() => setRoleSel(r as RoleFilter)}>
                     {r}
                   </DropdownMenuItem>
@@ -134,7 +128,7 @@ export default function AdminContactsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Link href={route("admin.contacts.create")}>
+            <Link href={route('admin.contacts.create')}>
               <Button>Add Contact</Button>
             </Link>
           </div>
@@ -147,7 +141,7 @@ export default function AdminContactsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {(["name","email","company","phone","created"] as SortKey[]).map(col => (
+                  {(['name','email','company','phone','created'] as SortKey[]).map(col => (
                     <TableHead
                       key={col}
                       onClick={() => changeSort(col)}
@@ -155,37 +149,36 @@ export default function AdminContactsPage() {
                     >
                       {sortLabels[col]}
                       {sortCol === col && (
-                        sortDir === "asc"
+                        sortDir === 'asc'
                           ? <ChevronUp className="inline h-4 w-4 ml-1" />
                           : <ChevronDown className="inline h-4 w-4 ml-1" />
                       )}
                     </TableHead>
                   ))}
-                  <TableHead>Role</TableHead>
+                  <TableHead>Role(s)</TableHead>
                   <TableHead className="text-right w-16">Actions</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {list.map(c => {
-                  const role =
-                    c.admin_id  ? "Admin"  :
-                    c.agent_id  ? "Agent"  :
-                    c.client_id ? "Client" :
-                    c.user_id   ? "User"   : "Standalone";
-
+                {visible.map(c => {
+                  const displayRoles = (c.roles as string[]).filter(r => r !== 'Standalone');
                   return (
                     <TableRow key={c.id}>
                       <TableCell>{c.firstname} {c.lastname}</TableCell>
-                      <TableCell>{c.email   || "—"}</TableCell>
-                      <TableCell>{c.company || "—"}</TableCell>
-                      <TableCell>{c.phone   || "—"}</TableCell>
-                      <TableCell>{c.created_at ? dayjs(c.created_at).format("MMM D YYYY") : "—"}</TableCell>
-                      <TableCell>
-                        <Badge className={badgeCls[role]}>{role === "Standalone" ? "—" : role}</Badge>
+                      <TableCell>{c.email   || '—'}</TableCell>
+                      <TableCell>{c.company || '—'}</TableCell>
+                      <TableCell>{c.phone   || '—'}</TableCell>
+                      <TableCell>{c.created_at ? dayjs(c.created_at).format('MMM D YYYY') : '—'}</TableCell>
+
+                      <TableCell className="space-x-1">
+                        {displayRoles.length
+                          ? displayRoles.map(r => (
+                              <Badge key={r} className={badgeCls[r]}>{r}</Badge>
+                            ))
+                          : <span className="text-muted-foreground text-xs">—</span>}
                       </TableCell>
 
-                      {/* actions */}
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -195,7 +188,7 @@ export default function AdminContactsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
-                              <Link href={route("admin.contacts.show", c.id)}>
+                              <Link href={route('admin.contacts.show', c.id)}>
                                 <Eye className="h-4 w-4 mr-2" /> View details
                               </Link>
                             </DropdownMenuItem>

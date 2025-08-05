@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\UserRole; 
 
 class User extends Authenticatable
 {
@@ -67,4 +68,15 @@ public function contactKey(): array
     return ['email' => $this->email];            // Users are uniquely by e-mail
 }
 
+public function roles() { return $this->hasMany(UserRole::class); }
+
+
+public function getPrimaryRoleAttribute(): ?string
+{
+    return $this->role                   // old enum column first
+        ?? optional($this->roles->first())->role_type;
 }
+
+}
+
+
