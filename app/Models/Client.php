@@ -4,11 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Agent;
-use App\Models\Sale;
-use App\Models\ClientDocument;
-use App\Models\ClientNote;
-use App\Models\User;
 
 class Client extends Model
 {
@@ -29,7 +24,6 @@ class Client extends Model
         'zipcode',
         'dob',
         'status',
-        'agent',
         'bank_name',
         'account_type',
         'account_holder',
@@ -37,52 +31,64 @@ class Client extends Model
         'account_number',
     ];
 
+    /* ─────────────── Relationships ─────────────── */
 
-
-    // Relationship: A client belongs to an agent
-    public function agent()
-    {
-        return $this->belongsTo(Agent::class, 'agent_id');
-    }
-
-    // Relationship: A client has many sales
-    public function sales()
-    {
-        return $this->hasMany(Sale::class, 'client_id');
-    }
-
-    // Relationship: A client has many documents
-    public function documents()
-    {
-        return $this->hasMany(ClientDocument::class, 'client_id');
-    }
-
-    // Relationship: A client has many notes
-    public function notes()
-    {
-        return $this->hasMany(ClientNote::class, 'client_id');
-    }
-
-    // NEW: Relationship to the User record
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function agent()
+    {
+        return $this->belongsTo(Agent::class, 'agent_id', 'agent_id')
+                    ->with('contact');           // ← eager-load contact for links
+    }
 
-    /* --- Contact integration --- */public function contactPayload(): array
-{
-    return [
-        'firstname' => $this->firstname,
-        'lastname'  => $this->lastname,
-        'email'     => $this->email,
-        'phone'     => $this->phone,
-    ];
-}
-public function contactKey(): array
-{
-    return ['client_id' => $this->client_id];
-}
+    public function sales()
+    {
+        return $this->hasMany(Sale::class, 'client_id');
+    }
 
+    public function documents()
+    {
+        return $this->hasMany(ClientDocument::class, 'client_id');
+    }
 
+    public function notes()
+    {
+        return $this->hasMany(ClientNote::class, 'client_id');
+    }
+
+    public function folders()           // legacy alias
+    {
+        return $this->hasMany(DocumentFolder::class, 'client_id');
+    }
+
+    public function documentFolders()   // preferred
+    {
+        return $this->folders();
+    }
+
+    /** 🔗 NEW — back-pointer to the client’s contact record */
+    public function contact()
+    {
+        return $this->hasOne(Contact::class, 'client_id', 'client_id');
+    }
+
+    /* ─────────────── Contactable helpers ─────────────── */
+
+    public function contactPayload(): array
+    {
+        return [
+            'firstname' => $this->firstname,
+            'lastname'  => $this->lastname,
+            'email'     => $this->email,
+            'phone'     => $this->phone,
+        ];
+    }
+
+    public function contactKey(): array
+    {
+        return ['client_id' => $this->client_id];
+    }
 }

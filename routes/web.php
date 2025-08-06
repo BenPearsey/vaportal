@@ -38,7 +38,8 @@ use App\Http\Controllers\SaleNoteController;
 use App\Http\Controllers\AdminEventController;
 use App\Http\Controllers\AdminContactController;
 use App\Http\Controllers\ContactLinkController;
-
+use App\Http\Controllers\ContactDocumentController;
+use App\Http\Controllers\ContactDocumentFolderController;
 
 // Main Route - Redirect Based on Role
 Route::get('/', function () {
@@ -184,55 +185,77 @@ Route::delete('admin/sales/{sale}/notes/{note}',     [SaleNoteController::class,
     });
 
 /* ───────── Admin • Contacts ───────── */
-
 Route::middleware(['auth', 'role:admin'])
-     ->prefix('admin')
-     ->as('admin.contacts.')
-     ->controller(AdminContactController::class)
-     ->group(function () {
+    ->prefix('admin')
+    ->as('admin.contacts.')
+    ->controller(AdminContactController::class)
+    ->group(function () {
 
-    /* LIST */
-    Route::get('/contacts', 'index')->name('index');
+    /* -------- Hub ------------ */
+    Route::get('/contacts/{contact}/hub', 'hub')
+        ->name('hub');
 
-    /* CREATE */
-    Route::get ('/contacts-create', 'create')->name('create');
-    Route::post('/contacts',         'store') ->name('store');
+    /* -------- CRUD ----------- */
+    Route::get ('/contacts',                 'index' )->name('index');
+    Route::get ('/contacts-create',          'create')->name('create');
+    Route::post('/contacts',                 'store' )->name('store');
 
-    /* SHOW  ─ both paths map to the same method */
-    Route::get('/contacts-show/{contact}', 'show')->name('show');
-    Route::get('/contacts/{contact}',      'show');        // ← alias
+    Route::get ('/contacts-show/{contact}',  'show'  )->name('show');
+    Route::get ('/contacts/{contact}',       'show');          // ← alias
 
-    /* EDIT / DELETE */
-    Route::put   ('/contacts/{contact}', 'update')->name('update');
-    Route::delete('/contacts/{contact}', 'destroy')->name('destroy');
+    Route::get ('/contacts-edit/{contact}',  'edit'  )->name('edit');
+    Route::put ('/contacts/{contact}',       'update')->name('update');
+    Route::delete('/contacts/{contact}',     'destroy')->name('destroy');
 
-    /* CONVERSIONS */
+    /* ---- TEMP: old /edit url keeps working ---- */
+    Route::get('/contacts/{contact}/edit', 'show')->name('edit');  // Ziggy sync
+
+    /* -------- Conversions ------- */
     Route::post('/contacts/{contact}/convert-to-agent',  'convertToAgent')
         ->name('convertToAgent');
     Route::post('/contacts/{contact}/convert-to-client', 'convertToClient')
         ->name('convertToClient');
 
-        // routes/web.php  (inside the admin/contacts group)
-Route::get('/contacts-edit/{contact}', 'edit')   // ← real edit, when you build it
-      ->name('edit');
-
-// TEMP: while “edit” page isn’t built, forward to show so the UI doesn’t explode
-Route::get('/contacts/{contact}/edit', 'show')   // ← keep old URL working too
-      ->name('edit');                            // gives Ziggy its route name
 
 
-      // Quick-note create
-Route::post('/{contact}/history',  [AdminContactController::class,'storeHistory'])
-     ->name('history.store');
-
-     Route::get('/contacts/{contact}/edit', 'edit')->name('edit');
-
-     Route::post('/contacts/{contact}/links',  [ContactLinkController::class,'store'])
-     ->name('links.store');
-Route::delete('/contacts/{contact}/links/{link}', [ContactLinkController::class,'destroy'])
-     ->name('links.destroy');
+    /* ───────── Quick-notes ───────── */
+// Quick-notes (one set – create / update / delete)
+Route::post   ('contacts/{contact}/history',                   'storeHistory'  )->name('history.store');
+Route::put    ('contacts/{contact}/history/{history}',         'updateHistory')->name('history.update');
+Route::delete ('contacts/{contact}/history/{history}',         'destroyHistory')->name('history.destroy');
 
 
+
+    /* -------- Links ------------- */
+    Route::post  ('/contacts/{contact}/links',           [ContactLinkController::class,'store'  ])
+        ->name('links.store');
+    Route::delete('/contacts/{contact}/links/{link}',    [ContactLinkController::class,'destroy'])
+        ->name('links.destroy');
+
+    /* ───────── Documents & Folders ───────── */
+    Route::prefix('contacts/{contact}/documents')
+        ->name('documents.')
+        ->controller(ContactDocumentController::class)
+        ->group(function () {
+
+            /* documents */
+            Route::post   ('/',              'store'  )->name('upload');
+            Route::get    ('{document}/view','show'   )->name('view');
+            Route::delete ('{document}',     'destroy')->name('destroy');
+            Route::post   ('{document}/move','move'   )->name('move');
+            Route::post   ('{document}/rename','rename')->name('rename');
+
+            /* folders */
+            Route::prefix('folders')
+                ->name('folders.')
+                ->controller(ContactDocumentFolderController::class)
+                ->group(function () {
+                    Route::post  ('/',               'store'  )->name('store');
+                    Route::post  ('{folder}/rename', 'rename' )->name('rename');
+                    Route::post  ('{folder}/move',   'move'   )->name('move');
+                    Route::delete('{folder}',        'destroy')->name('destroy');
+                });
+        });
 });
 
 

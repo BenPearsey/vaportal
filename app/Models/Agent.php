@@ -4,11 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
-use App\Models\Sale;
-use App\Models\AgentDocument;
-use App\Models\AgentNote;
-use App\Models\AgentDocumentFolder;
 
 class Agent extends Model
 {
@@ -16,9 +11,6 @@ class Agent extends Model
 
     protected $primaryKey = 'agent_id';
 
-    /**
-     * Mass-assignable attributes.
-     */
     protected $fillable = [
         'user_id',
         'upline_agent_id',
@@ -33,12 +25,12 @@ class Agent extends Model
         'zipcode',
         'tax_id',
         'company',
-        'phone',          
+        'phone',
         'checklist',
     ];
 
     protected $casts = [
-        'checklist' => 'array', // ← NEW
+        'checklist' => 'array',
     ];
 
     /* ─────────────── Relationships ─────────────── */
@@ -48,21 +40,21 @@ class Agent extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    /** Parent (upline) agent */
     public function upline()
     {
-        return $this->belongsTo(Agent::class, 'upline_agent_id', 'agent_id');
+        return $this->belongsTo(self::class, 'upline_agent_id', 'agent_id');
     }
 
-    /** Downline agents, if you ever need them */
     public function downline()
     {
-        return $this->hasMany(Agent::class, 'upline_agent_id', 'agent_id');
+        return $this->hasMany(self::class, 'upline_agent_id', 'agent_id');
     }
 
+    /** Clients managed by this agent */
     public function clients()
     {
-        return $this->belongsTo(User::class, 'client_id');
+        return $this->hasMany(Client::class, 'agent_id', 'agent_id')
+                    ->with('contact');           // ← eager-load contact for convenience
     }
 
     public function sales()
@@ -85,19 +77,27 @@ class Agent extends Model
         return $this->hasMany(AgentDocumentFolder::class, 'agent_id', 'agent_id');
     }
 
-    public function contactPayload(): array
-{
-    return [
-        'firstname' => $this->firstname,
-        'lastname'  => $this->lastname,
-        'email'     => $this->email,
-        'phone'     => $this->phone,
-        'company'   => $this->company,
-    ];
-}
-public function contactKey(): array
-{
-    return ['agent_id' => $this->agent_id];
-}
+    /** 🔗 NEW — back-pointer to the agent’s contact record */
+    public function contact()
+    {
+        return $this->hasOne(Contact::class, 'agent_id', 'agent_id');
+    }
 
+    /* ─────────────── Contactable helpers ─────────────── */
+
+    public function contactPayload(): array
+    {
+        return [
+            'firstname' => $this->firstname,
+            'lastname'  => $this->lastname,
+            'email'     => $this->email,
+            'phone'     => $this->phone,
+            'company'   => $this->company,
+        ];
+    }
+
+    public function contactKey(): array
+    {
+        return ['agent_id' => $this->agent_id];
+    }
 }
