@@ -40,6 +40,7 @@ use App\Http\Controllers\AdminContactController;
 use App\Http\Controllers\ContactLinkController;
 use App\Http\Controllers\ContactDocumentController;
 use App\Http\Controllers\ContactDocumentFolderController;
+use App\Http\Controllers\EventAttachmentController;
 
 // Main Route - Redirect Based on Role
 Route::get('/', function () {
@@ -182,7 +183,20 @@ Route::delete('admin/sales/{sale}/notes/{note}',     [SaleNoteController::class,
         Route::post('/', 'store');
         Route::put('/{id}', 'update');
         Route::delete('/{id}', 'destroy');
+        // routes/web.php  (inside the existing   prefix('admin/events')   group)
+Route::get('/{event}', 'show')->name('admin.events.show');
+
     });
+
+Route::middleware(['auth','adminOrCalendarAgent'])
+    ->prefix('admin/events/{event}')
+    ->group(function () {
+        Route::post   ('attachments',            [EventAttachmentController::class,'store'])
+              ->name ('admin.events.attachments.store');
+        Route::delete('attachments/{attachment}',[EventAttachmentController::class,'destroy'])
+              ->name ('admin.events.attachments.destroy');
+});
+
 
 /* ───────── Admin • Contacts ───────── */
 Route::middleware(['auth', 'role:admin'])

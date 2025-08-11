@@ -9,6 +9,7 @@ use App\Models\Admin;
 use App\Models\Agent;
 use App\Models\Client;
 use App\Observers\SyncContactRoleObserver;
+use App\Observers\EventObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,25 +25,19 @@ class AppServiceProvider extends ServiceProvider
      * Bootstrap any application services.
      */
     public function boot(): void
-    {
-        // Define your routes inside the 'routes' directory
-        Route::middleware('web')
-            ->group(base_path('routes/web.php'));
+{
+    /* ── route groups & middleware (unchanged) ── */
+    Route::middleware('web')->group(base_path('routes/web.php'));
+    Route::aliasMiddleware('role', RoleMiddleware::class);
 
-        // Register custom middleware
-        Route::aliasMiddleware('role', RoleMiddleware::class);
-
-                Route::macro('sortable', function () {
-            /** @var \Illuminate\Routing\Route $this */
-            $this->whereAlpha('column');
-            return $this;
-
+    /* ── model observers ── */
     Admin ::observe(SyncContactRoleObserver::class);
     Agent ::observe(SyncContactRoleObserver::class);
     Client::observe(SyncContactRoleObserver::class);
-        });
+    \App\Models\Event::observe(EventObserver::class);
 
-            \App\Models\Event::observe(\App\Observers\EventObserver::class);
+    /* ── global mail settings (safe API) ── */
+    \Mail::alwaysFrom('noreply@verticalalternatives.com', 'VA Portal');
+}
 
-    }
 }

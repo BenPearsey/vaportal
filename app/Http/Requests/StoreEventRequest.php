@@ -35,8 +35,21 @@ public function rules(): array
         'contact_participants.*'  => 'exists:contacts,id',
 
         'priority'         => 'sometimes|in:low,medium,high',
-        'location'         => 'sometimes|nullable|string|max:255',
+'location' => [
+    'sometimes','nullable','string','max:255',
+    function ($attr, $value, $fail) {
+        $type = $this->input('activity_type');
+        if ($type === 'Video Call' && !filter_var($value, FILTER_VALIDATE_URL))
+            $fail('Join link must be a valid URL.');
+        if ($type === 'Call' && !preg_match('/^\+?[0-9\s\-\(\)]+$/', $value))
+            $fail('Phone number format invalid.');
+    }
+],
+
         'reminder_minutes' => 'sometimes|nullable|integer|min:1|max:10080',
+        'invite_emails'   => ['array'],
+'invite_emails.*' => ['email','max:255'],
+
     ];
 }
 

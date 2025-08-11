@@ -2,55 +2,66 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Event extends Model
 {
+    use HasFactory;
+
+    /* ------------------------------------------------ fillables / casts */
     protected $fillable = [
-        'title', 'description', 'start_datetime', 'end_datetime',
-        'all_day', 'owner_id',
+        'owner_id', 'title', 'description',
+        'start_datetime', 'end_datetime', 'all_day',
         'activity_type', 'status',
-        'recurrence_rule', 'recurrence_exceptions', 'is_private',
-        'priority','location','reminder_minutes',
+        'recurrence_rule', 'recurrence_exceptions',
+        'is_private', 'priority',
+        'location', 'reminder_minutes',
     ];
 
     protected $casts = [
-        'all_day'               => 'boolean',
-        'start_datetime'        => 'datetime',
-        'end_datetime'          => 'datetime',
-        'is_private'            => 'boolean',
+        'all_day'           => 'bool',
+        'start_datetime'    => 'datetime',
+        'end_datetime'      => 'datetime',
         'recurrence_exceptions' => 'array',
-        'reminder_minutes' => 'integer',
     ];
 
-    /* ---------------------------------------------------- relations */
+    /* ------------------------------------------------ relationships */
 
-    public function owner(): BelongsTo
+    /** owner (admin or agent) */
+    public function owner()
     {
         return $this->belongsTo(User::class, 'owner_id');
     }
 
-    /**  Portal users invited to this event */
-    public function userParticipants(): BelongsToMany
+    /** many-to-many → users invited */
+    public function userParticipants()
     {
-        return $this->belongsToMany(
-            User::class,
-            'event_participants',
-            'event_id',
-            'user_id'
-        )->withPivot('status')->withTimestamps();
+        return $this->belongsToMany(User::class)
+                    ->withPivot('status')
+                    ->withTimestamps();
     }
 
-    /**  External contacts invited to this event */
-    public function contactParticipants(): BelongsToMany
+    /** many-to-many → contacts invited */
+    public function contactParticipants()
     {
-        return $this->belongsToMany(
-            Contact::class,
-            'event_participants',
-            'event_id',
-            'contact_id'
-        )->withPivot('status')->withTimestamps();
+    return $this->belongsToMany(
+        Contact::class,         // related model
+        'event_contact'         // <-- pivot table name
+    )->withPivot('status')->withTimestamps();
     }
+
+    /** attachments */
+    public function attachments()
+    {
+        return $this->hasMany(EventAttachment::class);
+    }
+
+    /** ← NEW  free-typed e-mail invitees  */
+    public function emailInvites()
+    {
+        return $this->hasMany(EventEmailInvite::class);
+    }
+
+    
 }

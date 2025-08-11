@@ -60,7 +60,13 @@ return [
             'report' => false,
         ],
 
+                'private' => [
+        'driver' => 'local',
+        'root'   => storage_path('app/private'),
+ 'serve'  => true,          // Laravel 10+; adds support for url()    ],
+
     ],
+],
 
     /*
     |--------------------------------------------------------------------------
@@ -76,5 +82,7 @@ return [
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
+
+
 
 ];

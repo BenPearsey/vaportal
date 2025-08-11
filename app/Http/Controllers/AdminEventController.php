@@ -3,36 +3,43 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\EventAttachment;
+use App\Models\EventEmailInvite;
 use Illuminate\Http\Request;
-use App\Http\Requests\StoreEventRequest;
-use App\Http\Requests\UpdateEventRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\JsonResponse;
+use App\Http\Requests\StoreEventRequest;
+use App\Http\Requests\UpdateEventRequest;
+use App\Mail\EventInviteMail;
+use Mail;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class AdminEventController extends Controller
 {
-    /* ------------------------------------------------ list events */
+        use AuthorizesRequests;   
+    /* ----------------------------------------------------------------- list */
     public function index(): JsonResponse
     {
         $user = Auth::user();
 
         $with = [
-            'owner',                    // 👈  NEW: include owner so we know role
+            'owner',                                 // so we know its role
             'userParticipants.admin',
             'userParticipants.agent',
             'userParticipants.client',
             'contactParticipants',
+            'emailInvites',                         // ←  NEW  (fixes 500)
         ];
 
         $builder = Event::with($with);
 
-        // admins see everything; agents see their own + invited
         if ($user->role === 'admin') {
             $events = $builder->get();
         } elseif ($user->role === 'agent' && $user->calendar_enabled) {
             $events = $builder
                 ->where('owner_id', $user->id)
-                ->orWhereHas('userParticipants', fn ($q) => $q->where('users.id', $user->id))
+                ->orWhereHas('userParticipants', fn ($q) =>
+                    $q->where('users.id', $user->id))
                 ->get();
         } else {
             abort(403);
@@ -41,107 +48,137 @@ class AdminEventController extends Controller
         return response()->json($events);
     }
 
-    /* ------------------------------------------------ create */
+    /* ----------------------------------------------------------------- store */
     public function store(StoreEventRequest $request): JsonResponse
     {
-        $data  = $request->validated();
+        $data = $request->validated();
 
-        $event = Event::create([
-            'owner_id'             => Auth::id(),
-            'title'                => $data['title'],
-            'description'          => $data['description'] ?? null,
-            'start_datetime'       => $data['start_datetime'],
-            'end_datetime'         => $data['end_datetime'],
-            'all_day'              => $data['all_day'] ?? false,
-            'activity_type'        => $data['activity_type'],
-            'status'               => $data['status']       ?? 'scheduled',
-            'recurrence_rule'      => $data['recurrence_rule']      ?? null,
-            'recurrence_exceptions'=> $data['recurrence_exceptions']?? null,
-            'is_private'           => $data['is_private']   ?? false,
-            'priority'             => $data['priority']         ?? 'medium',
-            'location'             => $data['location']         ?? null,
-            'reminder_minutes'     => $data['reminder_minutes'] ?? null,
-        ]);
+        $event = Event::create(array_merge(
+            $data,
+            ['owner_id' => Auth::id()]
+        ));
 
-        /* attach users */
-        if (!empty($data['user_participants'])) {
-            $event->userParticipants()
-                  ->syncWithPivotValues(
-                      $data['user_participants'],
-                      ['status' => 'invited']
-                  );
+        /* users ------------------------------------------------------------ */
+        $event->userParticipants()
+              ->syncWithPivotValues(
+                  $data['user_participants'] ?? [],
+                  ['status' => 'invited']
+              );
+
+        /* contacts --------------------------------------------------------- */
+        $event->contactParticipants()
+              ->syncWithPivotValues(
+                  $data['contact_participants'] ?? [],
+                  ['status' => 'invited']
+              );
+
+        /* free-typed e-mails ---------------------------------------------- */
+        if (!empty($data['invite_emails'])) {
+            $event->emailInvites()->createMany(
+                collect($data['invite_emails'])
+                    ->unique()
+                    ->map(fn ($e) => ['email' => $e, 'status' => 'invited'])
+                    ->all()
+            );
         }
 
-        /* attach contacts */
-        if (!empty($data['contact_participants'])) {
-            $event->contactParticipants()
-                  ->syncWithPivotValues(
-                      $data['contact_participants'],
-                      ['status' => 'invited']
-                  );
+        /* notify users ----------------------------------------------------- */
+        foreach ($event->userParticipants as $user) {
+            Mail::to($user->email)->send(new EventInviteMail($event, $user));
         }
+
+        // notify contacts
+foreach ($event->contactParticipants as $contact) {
+    Mail::to($contact->email)
+        ->send(new EventInviteMail($event, $contact));
+}
+
+// notify ad-hoc e-mail addresses
+foreach ($event->emailInvites as $invite) {
+    // wrap in try/catch so one bad address
+    // doesn’t kill the rest
+    try {
+        Mail::to($invite->email)
+            ->send(new EventInviteMail($event, $invite->email));
+        $invite->update(['status' => 'sent']);
+    } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+        $invite->update(['status' => 'bounced']);
+        report($e);               // or log()
+    }
+}
+
 
         return response()->json(
             $event->load([
-                'owner',                                  // 👈  include owner
+                'owner',
                 'userParticipants.admin',
                 'userParticipants.agent',
                 'userParticipants.client',
                 'contactParticipants',
+                'emailInvites',                     // include in payload
             ])
         );
     }
 
-    /* ------------------------------------------------ update */
+    /* ----------------------------------------------------------------- update */
     public function update(UpdateEventRequest $request, $id): JsonResponse
     {
         $event = Event::findOrFail($id);
-
-        if (Auth::id() !== $event->owner_id && Auth::user()->role !== 'admin') {
-            abort(403);
-        }
+        $this->authorize('update', $event);
 
         $data = $request->validated();
         $event->update($data);
 
-        if ($request->filled('user_participants')) {
-            $event->userParticipants()
-                  ->syncWithPivotValues(
-                      $data['user_participants'],
-                      ['status' => 'invited']
-                  );
-        }
+        $event->userParticipants()
+              ->syncWithPivotValues(
+                  $data['user_participants'] ?? [],
+                  ['status' => 'invited']
+              );
 
-        if ($request->filled('contact_participants')) {
-            $event->contactParticipants()
-                  ->syncWithPivotValues(
-                      $data['contact_participants'],
-                      ['status' => 'invited']
-                  );
+        $event->contactParticipants()
+              ->syncWithPivotValues(
+                  $data['contact_participants'] ?? [],
+                  ['status' => 'invited']
+              );
+
+        /* sync email invites */
+        if (array_key_exists('invite_emails', $data)) {
+            $event->emailInvites()->delete();               // reset
+            $event->emailInvites()->createMany(
+                collect($data['invite_emails'])
+                    ->unique()
+                    ->map(fn ($e) => ['email' => $e, 'status' => 'invited'])
+                    ->all()
+            );
         }
 
         return response()->json(
             $event->load([
-                'owner',                                  // 👈  include owner
+                'owner',
                 'userParticipants.admin',
                 'userParticipants.agent',
                 'userParticipants.client',
                 'contactParticipants',
+                'emailInvites',
             ])
         );
     }
 
-    /* ------------------------------------------------ delete */
+    /* ----------------------------------------------------------------- destroy */
     public function destroy($id): JsonResponse
     {
         $event = Event::findOrFail($id);
-
-        if (Auth::id() !== $event->owner_id && Auth::user()->role !== 'admin') {
-            abort(403);
-        }
+        $this->authorize('delete', $event);
 
         $event->delete();
 
         return response()->json(['message' => 'Event deleted.']);
     }
+
+    public function show(Event $event)
+{
+    //  For now just send them to the calendar with ?event=ID so the SPA
+    //  can highlight it; adjust as you build a dedicated page.
+    return redirect()->route('admin.calendar', ['event' => $event->id]);
+}
 }

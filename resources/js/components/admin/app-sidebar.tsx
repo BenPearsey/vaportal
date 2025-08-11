@@ -27,8 +27,8 @@ export function AppSidebar() {
   const mainNavItems: NavItem[] = [
     { title: 'Home', url: '/admin/dashboard', icon: HomeIcon },
     { title: 'Sales', url: '/admin/sales', icon: BriefcaseBusinessIcon },
-    { title: 'Clients', url: '/admin/clients', icon: UsersIcon },
-    { title: 'Agents', url: '/admin/agents', icon: UsersIcon },
+   // { title: 'Clients', url: '/admin/clients', icon: UsersIcon },
+   // { title: 'Agents', url: '/admin/agents', icon: UsersIcon },
     { title: 'Contacts', url: '/admin/contacts', icon: UsersIcon },
     { title: 'Calendar', url: '/admin/calendar', icon: Calendar },
     { title: 'Forms & Resources', url: '/admin/forms-resources', icon: FolderIcon },

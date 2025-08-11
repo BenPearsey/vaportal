@@ -32,6 +32,14 @@ class Contact extends Model
         return $roles;
     }
 
+    public function events()
+{
+    return $this->belongsToMany(
+        Event::class,           // related model
+        'event_contact'         // same pivot table
+    )->withPivot('status')->withTimestamps();
+}
+
     /* ---------- relationships ---------- */
 
     /* people */
@@ -50,6 +58,7 @@ class Contact extends Model
     public function documents()       { return $this->hasMany(ContactDocument::class); }
 }
 
+
 /* ---------- pivot model (unchanged) ---------- */
 class ContactLink extends Model
 {
@@ -58,3 +67,4 @@ class ContactLink extends Model
     public function contact() { return $this->belongsTo(Contact::class); }
     public function related() { return $this->belongsTo(Contact::class, 'related_contact_id'); }
 }
+
