@@ -7,20 +7,20 @@ import { Progress } from '@/components/ui/progress';
 import { ClipboardList, LayoutGrid, Calendar, UserPlus, Play, FileText } from 'lucide-react';
 import { ReadOnlySlate } from '@/components/ReadOnlySlate';
 import VideoPlayer from '@/components/VideoPlayer';
+import SalesProgressShelf from '@/components/SalesProgressShelf';
 
-// --- Define TypeScript types for the dashboard data ---
 export interface Announcement {
   id?: number;
   type: 'text' | 'image' | 'video';
   title: string;
-  content: string;      // For text announcements, this contains Slate JSON.
-  description?: string; // For image/video announcements, optional Slate JSON caption.
+  content: string;
+  description?: string;
   created_at?: string;
 }
 
 export interface SalesProgressItem {
-  id: number;
-  name: string;
+  id: number;   // sale_id
+  name: string; // label from controller (not used by shelf)
   progress: number;
 }
 
@@ -33,8 +33,10 @@ interface DashboardPageProps {
   salesProgress: SalesProgressItem[];
 }
 
+// Subset of stages to visualize in each widget
+const BIG_FIVE_STAGE_KEYS = ['application','payment','certificate','county','carrier'];
+
 export default function Dashboard() {
-  // Retrieve data from the controller's Inertia props and type them as DashboardPageProps.
   const {
     announcements,
     pendingSales,
@@ -44,7 +46,6 @@ export default function Dashboard() {
     salesProgress,
   } = usePage<DashboardPageProps>().props;
 
-  // Get the current year (for the stats labels)
   const currentYear = new Date().getFullYear();
 
   return (
@@ -52,7 +53,18 @@ export default function Dashboard() {
       <Head title="Agent Dashboard" />
 
       <div className="flex flex-col gap-6 p-4">
-        {/* Announcements Section */}
+
+        {/* 🔹 All of the agent’s sales as live progress cards
+            Reads /agent/sales (Inertia JSON) and uses lib/productLabel for titles. */}
+        <SalesProgressShelf
+          role="agent"
+          onlyStageKeys={BIG_FIVE_STAGE_KEYS}
+          showCompleteOnce={false}
+          hideCompleted={false} // set true if you want to hide 100% complete
+          // sourceUrl can be omitted; component defaults to /agent/sales
+        />
+
+        {/* Announcements */}
         <div>
           <h2 className="text-xl font-bold">Announcements</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -78,11 +90,8 @@ export default function Dashboard() {
                         />
                       </AspectRatio>
                     ) : (
-                      // For text announcements, use ReadOnlySlate to render the Slate JSON.
                       <ReadOnlySlate key={`${announcement.id}-content`} jsonString={announcement.content} />
                     )}
-
-                    {/* Render description if available for non-text announcements */}
                     {announcement.description && announcement.type !== 'text' && (
                       <div className="mt-2">
                         <ReadOnlySlate key={`${announcement.id}-description`} jsonString={announcement.description} />
@@ -97,9 +106,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Key Stats Section */}
+        {/* Key Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Pending Sales */}
           <Card>
             <CardHeader className="flex items-center justify-between">
               <CardTitle>Pending Sales</CardTitle>
@@ -108,7 +116,6 @@ export default function Dashboard() {
             <CardContent className="text-3xl font-bold">{pendingSales}</CardContent>
           </Card>
 
-          {/* Sales Completed This Month */}
           <Card>
             <CardHeader className="flex items-center justify-between">
               <CardTitle>Sales Completed This Month</CardTitle>
@@ -117,7 +124,6 @@ export default function Dashboard() {
             <CardContent className="text-3xl font-bold">{salesCompletedThisMonth}</CardContent>
           </Card>
 
-          {/* Sales Completed for the Current Year */}
           <Card>
             <CardHeader className="flex items-center justify-between">
               <CardTitle>Sales Completed {currentYear}</CardTitle>
@@ -126,7 +132,6 @@ export default function Dashboard() {
             <CardContent className="text-3xl font-bold">{salesCompletedYear}</CardContent>
           </Card>
 
-          {/* New Clients for the Current Year */}
           <Card>
             <CardHeader className="flex items-center justify-between">
               <CardTitle>New Clients for {currentYear}</CardTitle>
@@ -136,22 +141,7 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Sales Progress Tracker Section */}
-        <div className="border-sidebar-border/70 dark:border-sidebar-border relative min-h-[250px] flex-1 rounded-xl border p-4">
-          <h2 className="text-lg font-semibold mb-4">Sales Progress Tracker</h2>
-          <div className="space-y-4">
-            {salesProgress && salesProgress.length > 0 ? (
-              salesProgress.map((sale) => (
-                <div key={sale.id} className="flex flex-col">
-                  <span className="text-sm font-medium">{sale.name}</span>
-                  <Progress value={sale.progress} className="h-3" />
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">No sales progress data available.</p>
-            )}
-          </div>
-        </div>
+
       </div>
     </AppLayout>
   );

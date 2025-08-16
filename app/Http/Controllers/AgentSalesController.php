@@ -4,29 +4,52 @@ namespace App\Http\Controllers;
 
 use Inertia\Inertia;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;                // ← for Auth::user()
-use Illuminate\Support\Facades\Notification;        // ← for sending notifications
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
 use App\Models\Sale;
-use App\Models\Client;                              // ← your agent’s clients
+use App\Models\Client;
 use App\Models\Carrier;
-use App\Models\User;                                // ← to look up admins
-use App\Notifications\SaleCreated;                  // ← your new notification
+use App\Models\User;
+use App\Notifications\SaleCreated;
 
 class AgentSalesController extends Controller
 {
     /**
-     * Display a paginated list of this agent's sales,
-     * with filters for status, product & carrier.
+     * Sales index.
+     * - If the request wants JSON (Accept: application/json), return a compact JSON list of *all* sales
+     *   for this agent (suitable for SalesProgressShelf).
+     * - Otherwise render the existing Inertia page with filters/pagination (unchanged).
      */
     public function index(Request $request)
     {
         $agent = auth()->user()->agent;
 
-        // Base query: only this agent's sales, eager-loading client & carrierInfo
+        /* ---------- JSON for components (SalesProgressShelf) ---------- */
+        if ($request->expectsJson() || $request->wantsJson() ||
+            str_contains((string) $request->header('Accept'), 'application/json')) {
+
+            // Left join sale_checklists to expose progress_cached without needing model changes.
+            $rows = Sale::query()
+                ->where('agent_id', $agent->agent_id)
+                ->leftJoin('sale_checklists as sc', 'sc.sale_id', '=', 'sales.sale_id')
+                ->orderByDesc('sale_date')
+                ->get([
+                    'sales.sale_id as id',
+                    'sales.product',
+                    'sales.created_at',
+                    'sales.sale_date as contracted_at',
+                    'sales.status',
+                    'sc.progress_cached',
+                ]);
+
+            return response()->json($rows);
+        }
+        /* -------------------------------------------------------------- */
+
+        // Existing Inertia page logic (unchanged)
         $query = Sale::with(['client', 'carrierInfo'])
                      ->where('agent_id', $agent->agent_id);
 
-        // Apply filters
         if ($request->filled('status') && $request->status !== 'All') {
             $query->where('status', $request->status);
         }
@@ -43,19 +66,16 @@ class AgentSalesController extends Controller
             });
         }
 
-        // Paginate
         $sales = $query->orderBy('sale_date', 'desc')
                        ->paginate(10)
                        ->withQueryString();
 
-        // Summary stats
         $stats = [
             'totalSales' => $sales->total(),
             'pending'    => $sales->where('status', 'Pending')->count(),
             'completed'  => $sales->where('status', 'Completed')->count(),
         ];
 
-        // Filters: status, distinct products, and carriers
         $statuses = Sale::select('status')->distinct()->pluck('status')->prepend('All');
         $products = Sale::select('product')->distinct()->pluck('product')->prepend('All');
         $carriers = Carrier::select('id','name')
@@ -80,22 +100,21 @@ class AgentSalesController extends Controller
     {
         $agent = Auth::user()->agent;
 
-        // only this agent’s clients
         $clients = Client::where('agent_id', $agent->agent_id)
                          ->select('client_id as id','firstname','lastname')
                          ->get();
 
-        // mirror your admin products list
+        // keep your existing status list
+        $statuses = [
+            'Waiting for Funds','Waiting for Documents','Processing',
+            'Waiting for Carrier','Completed','Cancelled',
+        ];
+
+        // Leave product options as-is for now (you can swap this to a dynamic list later if you want)
         $products = [
             'trust','precious_metals','term_life',
             'iul','whole_life','annuity',
             'final_expense','10_term','20_term','30_term'
-        ];
-
-        // mirror your admin statuses
-        $statuses = [
-            'Waiting for Funds','Waiting for Documents','Processing',
-            'Waiting for Carrier','Completed','Cancelled',
         ];
 
         return Inertia::render('agent/add-sale', [
@@ -105,9 +124,6 @@ class AgentSalesController extends Controller
         ]);
     }
 
-    /**
-     * Persist a new Sale and notify all admins.
-     */
     public function store(Request $request)
     {
         $agent = Auth::user()->agent;
@@ -134,7 +150,6 @@ class AgentSalesController extends Controller
             'funds_received'    => 0,
         ]);
 
-        // notify all admins
         $admins = User::where('role','admin')->get();
         Notification::send($admins, new SaleCreated($sale));
 
@@ -143,9 +158,6 @@ class AgentSalesController extends Controller
             ->with('success','Sale created and admins notified.');
     }
 
-    /**
-     * Show a single sale’s details.
-     */
     public function show(Sale $sale)
     {
         $agent = auth()->user()->agent;

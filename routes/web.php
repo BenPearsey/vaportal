@@ -41,6 +41,7 @@ use App\Http\Controllers\ContactLinkController;
 use App\Http\Controllers\ContactDocumentController;
 use App\Http\Controllers\ContactDocumentFolderController;
 use App\Http\Controllers\EventAttachmentController;
+use App\Http\Controllers\SaleChecklistController;
 
 // Main Route - Redirect Based on Role
 Route::get('/', function () {
@@ -185,6 +186,7 @@ Route::delete('admin/sales/{sale}/notes/{note}',     [SaleNoteController::class,
         Route::delete('/{id}', 'destroy');
         // routes/web.php  (inside the existing   prefix('admin/events')   group)
 Route::get('/{event}', 'show')->name('admin.events.show');
+        Route::post('/{event}/invite', 'invite')->name('admin.events.invite');
 
     });
 
@@ -195,6 +197,9 @@ Route::middleware(['auth','adminOrCalendarAgent'])
               ->name ('admin.events.attachments.store');
         Route::delete('attachments/{attachment}',[EventAttachmentController::class,'destroy'])
               ->name ('admin.events.attachments.destroy');
+
+                      Route::get   ('attachments/{attachment}/download',[EventAttachmentController::class,'download'])
+              ->name ('admin.events.attachments.download');
 });
 
 
@@ -448,6 +453,22 @@ Route::prefix('admin/admin-documents')
 
 });
 
+/* ========== Admin – Sale Checklist ========== */
+Route::middleware(['auth','role:admin'])->group(function () {
+    // instantiate if missing & get summary
+    Route::get ('admin/sales/{sale}/checklist/ensure',   [\App\Http\Controllers\SaleChecklistController::class,'ensure'])->name('admin.sales.checklist.ensure');
+    Route::get ('admin/sales/{sale}/checklist',          [\App\Http\Controllers\SaleChecklistController::class,'summary'])->name('admin.sales.checklist.summary');
+    Route::post('admin/sales/{sale}/checklist/items/{item}/state', [\App\Http\Controllers\SaleChecklistController::class,'updateState'])->name('admin.sales.checklist.item.state');
+    Route::post('admin/sales/{sale}/checklist/items/{item}/review',[\App\Http\Controllers\SaleChecklistController::class,'review'])->name('admin.sales.checklist.item.review');
+    Route::post('admin/sales/{sale}/checklist/stages/{stage}/repeat',[\App\Http\Controllers\SaleChecklistController::class,'addRepeatable'])->name('admin.sales.checklist.stage.repeat');
+    Route::post('admin/sales/{sale}/checklist/recalc',  [\App\Http\Controllers\SaleChecklistController::class,'recalc'])->name('admin.sales.checklist.recalc');
+
+    // add a simple "view" for sale documents
+Route::get(
+    'admin/sales/{sale}/documents/{document}/view',
+    [\App\Http\Controllers\SaleDocumentController::class, 'show']
+)->name('admin.sales.documents.view');
+});
 // ✅ Agent Routes
 Route::middleware(['auth', 'role:agent'])->group(function () {
     Route::get('agent/notifications',         [NotificationController::class,'agentIndex'])->name('agent.notifications');
@@ -510,6 +531,12 @@ Route::get('agent/clients/{client}/overview', [AgentClientController::class,'ove
     )->name('agent.forms-resources.show');
 });
 
+Route::middleware(['auth','role:agent'])->group(function () {
+    Route::get ('agent/sales/{sale}/checklist/ensure', [\App\Http\Controllers\SaleChecklistController::class,'ensure'])->name('agent.sales.checklist.ensure')->defaults('role','agent');
+    Route::get ('agent/sales/{sale}/checklist',        [\App\Http\Controllers\SaleChecklistController::class,'summary'])->name('agent.sales.checklist.summary')->defaults('role','agent');
+    Route::post('agent/sales/{sale}/checklist/items/{item}/upload', [\App\Http\Controllers\SaleChecklistController::class,'upload'])->name('agent.sales.checklist.item.upload')->defaults('role','agent');
+});
+
 // ✅ Client Routes
 Route::middleware(['auth', 'role:client'])->group(function () {
     Route::get('client/notifications',         [NotificationController::class,'clientIndex'])->name('client.notifications');
@@ -532,12 +559,23 @@ Route::middleware(['auth', 'role:client'])->group(function () {
     Route::get('client/forms-resources/documents/{document}',  // file view / download
         [ClientResourceController::class, 'show']
     )->name('client.forms-resources.show');
+    Route::get('client/sales', [ClientSaleController::class, 'index'])->name('client.sales');
+
 
     Route::get  ('client/settings/profile',  [\App\Http\Controllers\Settings\ProfileController::class, 'edit'  ])
          ->name('client.settings.profile');
     Route::patch('profile',  [\App\Http\Controllers\Settings\ProfileController::class, 'update'])
          ->name('client.profile.update');    Route::inertia('client/settings/password',  'settings/client/password')->name('client.settings.password');
     Route::inertia('client/settings/appearance','settings/client/appearance')->name('client.settings.appearance');
+
+});
+
+Route::middleware(['auth','role:client'])->group(function () {
+    Route::get ('client/sales/{sale}/checklist/ensure', [\App\Http\Controllers\SaleChecklistController::class,'ensure'])->name('client.sales.checklist.ensure')->defaults('role','client');
+    Route::get ('client/sales/{sale}/checklist',        [\App\Http\Controllers\SaleChecklistController::class,'summary'])->name('client.sales.checklist.summary')->defaults('role','client');
+    Route::post('client/sales/{sale}/checklist/items/{item}/upload', [\App\Http\Controllers\SaleChecklistController::class,'upload'])->name('client.sales.checklist.item.upload')->defaults('role','client');
+    // ✅ Client shelf JSON endpoint
+
 
 });
 

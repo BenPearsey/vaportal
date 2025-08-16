@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Agent;
 use App\Models\Client;
 use App\Models\Carrier;
+use App\Models\SaleChecklist;
+use App\Models\SaleChecklistItem;
 
 class Sale extends Model
 {
@@ -17,27 +19,25 @@ class Sale extends Model
     protected $fillable = [
         'client_id',
         'agent_id',
-        'product',           // Used for sale type (we use a mapping on the front end)
+        'product',            // Used for sale type (mapped on the FE)
         'total_sale_amount',
         'commission',
-        'carrier_id',        // This column stores the carrier's ID
+        'carrier_id',
         'status',
         'sale_date',
         'funds_received',
         'sale_type',
-        'checklist',         // This column stores the checklist items as JSON
+        'checklist',          // legacy JSON column
     ];
 
-    // app/Models/Sale.php
-protected $casts = [
-    'checklist' => 'array',
-];
+    protected $casts = [
+        'checklist' => 'array',
+    ];
 
-
+    /* ---------------- Relations ---------------- */
 
     public function agent()
     {
-        // Assuming agent details are stored in the Agent model.
         return $this->belongsTo(Agent::class, 'agent_id');
     }
 
@@ -48,25 +48,54 @@ protected $casts = [
 
     public function carrierInfo()
     {
-        // This relationship uses the sale table's carrier_id to relate to Carrier's id.
         return $this->belongsTo(Carrier::class, 'carrier_id');
     }
 
     public function documents()
-{
-    // local key on sale_documents = sale_id, parent key on sales = sale_id
-    return $this->hasMany(SaleDocument::class, 'sale_id', 'sale_id');
-}
+    {
+        return $this->hasMany(SaleDocument::class, 'sale_id', 'sale_id');
+    }
 
-public function notes()
-{
-    return $this->hasMany(SaleNote::class, 'sale_id', 'sale_id');
-}
+    public function notes()
+    {
+        return $this->hasMany(SaleNote::class, 'sale_id', 'sale_id');
+    }
 
-// app/Models/Sale.php
-public function checklist()
-{
-    return $this->hasMany(SaleChecklistItem::class, 'sale_id', 'sale_id');
-}
+    /**
+     * ✅ The parent checklist row for this sale (holds progress_cached).
+     * Matches SaleChecklistController which looks up by sale_id.
+     */
+    public function checklistParent()
+    {
+        return $this->hasOne(SaleChecklist::class, 'sale_id', 'sale_id');
+    }
 
+    /**
+     * Optional helper: all checklist items for this sale via the parent.
+     * Not required for the dashboards, but handy if you need items.
+     */
+    public function checklistItemsThrough()
+    {
+        return $this->hasManyThrough(
+            SaleChecklistItem::class, // final
+            SaleChecklist::class,     // through
+            'sale_id',                // FK on SaleChecklist referencing sales.sale_id
+            'sale_checklist_id',      // FK on SaleChecklistItem referencing sale_checklists.id
+            'sale_id',                // local key on sales
+            'id'                      // local key on sale_checklists
+        );
+    }
+
+    /**
+     * ⚠ NOTE: You already had a method named "checklist()" and also a JSON attribute
+     * "checklist" (cast above). Leaving it as-is to avoid breaking anything,
+     * but be aware the name collision can be confusing. Prefer checklistParent()
+     * or checklistItemsThrough() going forward.
+     */
+    public function checklist()
+    {
+        // Your original relation was here; leaving as-is for compatibility.
+        // It likely doesn't match your DB columns for items, so avoid using it.
+        return $this->hasMany(SaleChecklistItem::class, 'sale_id', 'sale_id');
+    }
 }

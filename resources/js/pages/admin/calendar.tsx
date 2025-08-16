@@ -73,6 +73,23 @@ const priorityColor: Record<string, string> = {
 };
 const ownerColor = (id: number) => `hsl(${(id * 47) % 360} 70% 45%)`;
 
+function explainAxios(err: any, fallback = "Something went wrong"): string {
+  const r = err?.response;
+  if (!r) return fallback;
+  if (r.status === 413) return "File is too large (50 MB max).";
+  if (r.status === 403) return "You don’t have permission to do that.";
+  if (r.status === 404) return "Not found.";
+  if (r.status === 422) {
+    const errors = r.data?.errors;
+    if (errors) {
+      const firstKey = Object.keys(errors)[0];
+      if (firstKey && errors[firstKey]?.[0]) return errors[firstKey][0];
+    }
+    return r.data?.message ?? fallback;
+  }
+  return r.data?.message ?? fallback;
+}
+
 /* convert API event → FullCalendar */
 const toEventInput = (e: any): EventInput => {
   const participants: Person[] = [
@@ -88,7 +105,7 @@ const toEventInput = (e: any): EventInput => {
       name:
         c.firstname || c.lastname
           ? `${c.firstname ?? ""} ${c.lastname ?? ""}`.trim()
-          : c.company,
+          : c.company ?? c.email ?? `Contact #${c.id}`,
       email: c.email,
     })),
     ...(e.email_invites ?? []).map((inv: any) => ({
@@ -115,9 +132,16 @@ const toEventInput = (e: any): EventInput => {
       priority: e.priority,
       location: e.location,
       reminder_minutes: e.reminder_minutes,
-      attachments: (e.attachments ?? []).map((a:any)=>({
-        id:a.id, original_name:a.original_name, url:a.download_url
-      })),    },
+      activity_type: e.activity_type,
+      rrule: e.recurrence_rule ?? null,
+      attachments: (e.attachments ?? []).map((a: any) => ({
+        id: a.id,
+        original_name: a.original_name,
+        url: a.download_url,
+      })),
+      participants,
+      description: e.description,
+    },
   };
 
   return e.recurrence_rule
@@ -147,7 +171,7 @@ interface CalendarEvent {
   location?: string | null;
   reminder_minutes?: number | null;
   participants: Person[];
-  attachments?: { id: number; original_name: string }[];
+  attachments?: { id: number; original_name: string; url?: string }[];
 }
 
 /* ───────────────────────── component ───────────────────────── */
@@ -201,8 +225,11 @@ export default function AdminCalendarPage() {
           setOwners(Object.values(map));
           setVisible(Object.fromEntries(Object.keys(map).map(id => [+id, true])));
         }
-      } catch { toast.error("Failed to load events"); }
-      finally { setLoading(false); }
+      } catch (e:any) {
+        toast.error(explainAxios(e, "Failed to load events"));
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [isAdmin, me?.id]);
 
@@ -238,64 +265,85 @@ export default function AdminCalendarPage() {
     recurrence_rule: showRecurrence ? form.recurrence_rule : null,
     activity_type:form.activity_type, status:form.status, priority:form.priority,
     location:form.location, reminder_minutes:form.reminder_minutes,
-  user_participants:
-    form.participants.filter(p => p.type === "user").map(p => p.id) ?? [],
-  contact_participants:
-    form.participants.filter(p => p.type === "contact").map(p => p.id) ?? [],
-  invite_emails:
-    form.participants.filter(p => p.type === "email").map(p => p.email) ?? [],
+    user_participants:
+      form.participants.filter(p => p.type === "user").map(p => p.id) ?? [],
+    contact_participants:
+      form.participants.filter(p => p.type === "contact").map(p => p.id) ?? [],
+    invite_emails:
+      form.participants.filter(p => p.type === "email").map(p => p.email) ?? [],
   });
 
   const toggleOwner = (id:number) => setVisible(v => ({ ...v, [id]: !v[id] }));
 
   /* ---------- CRUD ---------- */
-const createEvent = async () => {
-  const toastId = toast.loading("Saving…");
-  try {
-    const { data } = await axios.post("/admin/events", payload());
+  const createEvent = async () => {
+    const t = toast.loading("Saving…");
+    try {
+      const { data } = await axios.post("/admin/events", payload());
 
-    // 1️⃣ upload attachments first …
-    await attachRef.current?.flush(data.id);
+      // 1) upload attachments
+      try {
+        await attachRef.current?.flush(data.id);
+      } catch (e:any) {
+        toast.error(explainAxios(e, "Some files failed to upload"), { id: t });
+      }
 
-    // 2️⃣ …then ask the backend to send the invites **with** those attachments
-    await axios.post(`/admin/events/${data.id}/invite`);
+      // 2) then send invites (do not block creation)
+      let inviteNote = "";
+      try {
+        const res = await axios.post(`/admin/events/${data.id}/invite`);
+        if (res.data?.failed?.length) {
+          inviteNote = ` — couldn't deliver to: ${res.data.failed.join(", ")}`;
+        }
+      } catch (e:any) {
+        inviteNote = " — unable to deliver email invites.";
+      }
 
-    setEvents(e => [...e, toEventInput(data)]);
-    toast.success("Event created", { id: toastId });
-    setIsNew(false); reset();
-  } catch {
-    toast.error("Create failed", { id: toastId });
-  }
-};
+      setEvents(e => [...e, toEventInput(data)]);
+      toast.success(`Event created${inviteNote}`, { id: t });
+      setIsNew(false); reset();
+    } catch (e:any) {
+      toast.error(explainAxios(e, "Create failed"), { id: t });
+    }
+  };
 
   const updateEvent = async () => {
     if (!editingId) return;
+    const t = toast.loading("Saving…");
     try {
       const { data } = await axios.put(`/admin/events/${editingId}`, payload());
       setEvents(e => e.map(ev => ev.id===data.id ? toEventInput(data) : ev));
-      toast.success("Event updated");
+      toast.success("Event updated", { id: t });
       setIsEdit(false); reset();
-    } catch { toast.error("Update failed"); }
+    } catch (e:any) {
+      toast.error(explainAxios(e, "Update failed"), { id: t });
+    }
   };
 
   const deleteEvent = async () => {
     if (!editingId) return;
+    const t = toast.loading("Deleting…");
     try {
       await axios.delete(`/admin/events/${editingId}`);
       setEvents(e => e.filter(ev => ev.id!==editingId));
-      toast.success("Event deleted");
+      toast.success("Event deleted", { id: t });
       setIsEdit(false); reset();
-    } catch { toast.error("Delete failed"); }
+    } catch (e:any) {
+      toast.error(explainAxios(e, "Delete failed"), { id: t });
+    }
   };
 
   const setStatus = async (status:"completed"|"scheduled") => {
     if (!editingId) return;
+    const t = toast.loading("Saving…");
     try {
       const { data } = await axios.put(`/admin/events/${editingId}`, { status });
       setEvents(e => e.map(ev => ev.id===data.id ? toEventInput(data) : ev));
-      toast.success(status==="completed" ? "Completed" : "Re-opened");
+      toast.success(status==="completed" ? "Marked complete" : "Re-opened", { id: t });
       setIsView(false); reset();
-    } catch { toast.error("Update failed"); }
+    } catch (e:any) {
+      toast.error(explainAxios(e, "Update failed"), { id: t });
+    }
   };
 
   const moveEvent = async (info: EventDropArg | EventResizeDoneArg) => {
@@ -307,8 +355,8 @@ const createEvent = async () => {
       });
       setEvents(e => e.map(ev => ev.id===info.event.id
         ? { ...ev, start:info.event.startStr, end:info.event.endStr } : ev));
-    } catch {
-      toast.error("Update failed");
+    } catch (e:any) {
+      toast.error(explainAxios(e, "Update failed"));
       info.revert();
     }
   };
@@ -321,7 +369,7 @@ const createEvent = async () => {
       title: arg.event.title.replace(/^[^\s]\s/,""),
       description: arg.event.extendedProps?.description,
       start: arg.event.startStr, end: arg.event.endStr, all_day: arg.event.allDay,
-      recurrence_rule: arg.event.extendedProps?.rruleString ?? arg.event.extendedProps?.rrule ?? null,
+      recurrence_rule: arg.event.extendedProps?.rrule ?? null,
       activity_type: arg.event.extendedProps?.activity_type ?? "Meeting",
       status: arg.event.extendedProps?.status ?? "scheduled",
       priority: arg.event.extendedProps?.priority ?? "medium",
@@ -330,7 +378,31 @@ const createEvent = async () => {
       participants: arg.event.extendedProps?.participants ?? [],
       attachments:  arg.event.extendedProps?.attachments  ?? [],
     });
-    setShowRecurrence(!!arg.event.extendedProps?.rruleString);
+    setShowRecurrence(!!arg.event.extendedProps?.rrule);
+    setIsView(true);
+  };
+
+  // open viewer from sidebar by id
+  const openById = (id: number | string) => {
+    const ev = events.find(e => String(e.id) === String(id));
+    if (!ev) return;
+    setSelectedDate(new Date(ev.start as string));
+    setEditId(+ev.id!);
+    setForm({
+      id:+ev.id!,
+      title: ev.title.replace(/^[^\s]\s/,""),
+      description: ev.extendedProps?.description,
+      start: ev.start as string, end: ev.end as string | undefined, all_day: !!ev.allDay,
+      recurrence_rule: ev.extendedProps?.rrule ?? null,
+      activity_type: ev.extendedProps?.activity_type ?? "Meeting",
+      status: ev.extendedProps?.status ?? "scheduled",
+      priority: ev.extendedProps?.priority ?? "medium",
+      location: ev.extendedProps?.location ?? null,
+      reminder_minutes: ev.extendedProps?.reminder_minutes ?? null,
+      participants: ev.extendedProps?.participants ?? [],
+      attachments:  ev.extendedProps?.attachments  ?? [],
+    });
+    setShowRecurrence(!!ev.extendedProps?.rrule);
     setIsView(true);
   };
 
@@ -416,7 +488,12 @@ const createEvent = async () => {
         </div>
 
         {/* sidebar */}
-        <DaySidebar selected={selectedDate} onSelectDate={setSelectedDate} agenda={agenda} />
+        <DaySidebar
+          selected={selectedDate}
+          onSelectDate={setSelectedDate}
+          agenda={agenda}
+          onOpenEvent={openById}   // NEW: open same viewer from sidebar
+        />
       </div>
 
       {/* view dialog */}
@@ -426,8 +503,8 @@ const createEvent = async () => {
 
           <div className="space-y-2">
             {form.description && <p className="whitespace-pre-line">{form.description}</p>}
-            <p><b>Start:</b> {new Date(form.start!).toLocaleString()}</p>
-            <p><b>End:</b>   {new Date(form.end!).toLocaleString()}</p>
+            <p><b>Start:</b> {form.start ? new Date(form.start).toLocaleString() : ""}</p>
+            <p><b>End:</b>   {form.end   ? new Date(form.end).toLocaleString()   : ""}</p>
             {form.location && <p><b>Location:</b> {form.location}</p>}
             <p><b>Priority:</b> {form.priority}</p>
             {form.reminder_minutes!=null && (
@@ -441,20 +518,20 @@ const createEvent = async () => {
                 <ul className="ml-5 list-disc">
                   {form.attachments.map(a => (
                     <li key={a.id}>
-                      <a href={a.url} target="_blank" rel="noopener noreferrer"
-                         className="text-blue-600 underline">
-                        {a.original_name}
-                      </a>
+                      {a.url
+                        ? <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{a.original_name}</a>
+                        : a.original_name}
                     </li>
                   ))}
-                </ul>              </>
+                </ul>
+              </>
             )}
 
             {form.participants.length>0 && (
               <>
                 <b>Invitees:</b>
                 <ul className="ml-5 list-disc">
-                  {form.participants.map(p => <li key={`${p.type}-${p.email}`}>{p.name}</li>)}
+                  {form.participants.map(p => <li key={`${p.type}-${p.email ?? p.id}`}>{p.name}</li>)}
                 </ul>
               </>
             )}
@@ -566,10 +643,8 @@ function EventForm({ formData, onChange, showRecurrence, setShowRecurrence }: Fo
           onValueChange={v=>onChange("reminder_minutes",v==="none"?null:+v)}>
           <SelectTrigger className="w-full"><SelectValue placeholder="None" /></SelectTrigger>
           <SelectContent>
-            {[
-              ["none","None"],["5","5 minutes"],["15","15 minutes"],
-              ["60","1 hour"],["1440","1 day"],
-            ].map(([v,l])=><SelectItem key={v} value={v}>{l}</SelectItem>)}
+            {[["none","None"],["5","5 minutes"],["15","15 minutes"],["60","1 hour"],["1440","1 day"]]
+              .map(([v,l])=><SelectItem key={v} value={v}>{l}</SelectItem>)}
           </SelectContent>
         </Select>
 

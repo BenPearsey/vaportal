@@ -21,6 +21,8 @@ import {
 
 import SaleChecklist from "@/components/SaleChecklist";
 import type { BreadcrumbItem } from "@/types";
+import TrustChecklistPanel from "@/components/TrustChecklistPanel";
+
 
 /* ──────────────────────────────────────────────────────────
    Minimal reusable notes list + add / delete actions
@@ -220,6 +222,18 @@ export default function SaleOverview({ sale }: SaleOverviewProps) {
               />
             </CardContent>
           </Card>
+          <Card className="mt-6">
+<Card className="mt-6">
+  <CardHeader><CardTitle>Checklist</CardTitle></CardHeader>
+  <CardContent>
+    {sale.product?.toLowerCase().includes('trust')
+      ? <TrustChecklistPanel saleId={sale.sale_id} role="admin" />
+      : <SaleChecklist saleId={sale.sale_id} checklist={sale.checklist ?? []} />
+    }
+  </CardContent>
+</Card>
+
+</Card>
         </TabsContent>
 
         {/* ── Documents (simple version) ─────────── */}
