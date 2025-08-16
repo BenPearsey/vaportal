@@ -1,0 +1,1 @@
+import{j as s}from"./app-DUSEAaDk.js";const t=()=>s.jsxs("div",{className:"p-10 text-center",children:[s.jsx("h1",{className:"text-2xl font-semibold mb-4",children:"Dashboard missing"}),s.jsx("p",{children:"Please contact support so we can assign the proper role."})]});export{t as default};

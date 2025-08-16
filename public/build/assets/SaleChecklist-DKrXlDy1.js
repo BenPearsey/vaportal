@@ -1,0 +1,1 @@
+import{j as s}from"./app-DUSEAaDk.js";import{C as i}from"./Checklist-Df5g09Pz.js";function a({saleId:t,checklist:e}){return s.jsx(i,{entityId:t,checklist:e,updateRoute:"admin.sales.checklist"})}export{a as S};
